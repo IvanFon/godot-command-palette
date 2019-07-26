@@ -1,7 +1,7 @@
 tool
 extends EditorPlugin
 
-const Finder = preload("res://addons/godot-quick-find/Finder.tscn")
+const Finder = preload("res://addons/godot-command-palette/Finder.tscn")
 
 # Instance of finder scene
 var finder: Node
