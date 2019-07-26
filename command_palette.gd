@@ -2,18 +2,17 @@ tool
 extends EditorPlugin
 
 const Finder = preload("res://addons/godot-command-palette/Finder.tscn")
+const FileIndex = preload("res://addons/godot-command-palette/file_index.gd")
 
 # Instance of finder scene
 var finder: Node
 var finder_window: WindowDialog
 var finder_list: ItemList
 var finder_search: LineEdit
+# FileSystem index
+var file_index
 # If finder is open
 var open := false
-# Index of resources
-var resources: Array
-# Filtered resource list
-var resources_filtered: Array
 # Input tracking
 var inputs := {
 	"up": false,
@@ -38,8 +37,8 @@ func _enter_tree() -> void:
 	# Filesystem changes
 	get_editor_interface().get_resource_filesystem().connect("filesystem_changed", self, "_on_filesystem_changed")
 	
-	# Initial build file index
-	build_index()
+	# Setup FileSystem index
+	file_index = FileIndex.new(get_editor_interface().get_resource_filesystem().get_filesystem())
 
 func _exit_tree() -> void:
 	remove_control_from_container(CONTAINER_TOOLBAR, finder)
@@ -92,36 +91,10 @@ func _on_finder_closed() -> void:
 	finder_list.clear()
 	finder_search.clear()
 
-# Refresh button pressed
-func _on_refresh_pressed() -> void:
-	print("refresh")
-	build_index()
-
-# Build resource index
-func build_index() -> void:
-	resources = []
-	var root = get_editor_interface().get_resource_filesystem().get_filesystem()
-	search_directory(root, "res://")
-	resources_filtered = resources
-
-# Recursively search directory for files
-func search_directory(dir: EditorFileSystemDirectory, cur_path: String) -> void:
-	# Files
-	for i in range(dir.get_file_count()):
-		resources.append({
-			"type": dir.get_file_type(i),
-			"path": dir.get_file_path(i),
-		})
-	
-	# Subdirectories
-	for i in range(dir.get_subdir_count()):
-		var subdir = dir.get_subdir(i)
-		search_directory(subdir, cur_path + subdir.get_name())
-
 # Add resources to list
 func populate_list():
 	finder_list.clear()
-	for res in resources_filtered:
+	for res in file_index.resources_filtered:
 		finder_list.add_item(res.path)
 		finder_list.set_item_metadata(finder_list.get_item_count() - 1, res.type)
 	
@@ -129,22 +102,11 @@ func populate_list():
 	if finder_list.get_item_count() > 0:
 		finder_list.select(0)
 
-# Filter resources
-func filter_resources(text: String) -> void:
-	if text == "":
-		resources_filtered = resources
-		return
-	
-	resources_filtered = []
-	for res in resources:
-		if text.to_lower() in res.path.to_lower():
-			resources_filtered.append(res)
-
 # Filter list when search text changed
 # warning-ignore: unused_argument
 func _on_search_text_changed(new_text: String) -> void:
 	# Filter and display results
-	filter_resources(finder_search.text)
+	file_index.filter(finder_search.text)
 	populate_list()
 
 # Open result
@@ -198,4 +160,4 @@ func move_selection_down() -> void:
 	finder_list.ensure_current_is_visible()
 
 func _on_filesystem_changed():
-	build_index()
+	file_index.build_index()
