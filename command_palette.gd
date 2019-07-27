@@ -9,8 +9,6 @@ var finder: Node
 var finder_window: WindowDialog
 var finder_list: ItemList
 var finder_search: LineEdit
-# FileSystem index
-var file_index
 # If finder is open
 var open := false
 # Input tracking
@@ -18,6 +16,8 @@ var inputs := {
 	"up": false,
 	"down": false,
 }
+
+var cur_mode
 
 func _enter_tree() -> void:
 	# Create finder and add to editor
@@ -38,7 +38,9 @@ func _enter_tree() -> void:
 	get_editor_interface().get_resource_filesystem().connect("filesystem_changed", self, "_on_filesystem_changed")
 	
 	# Setup FileSystem index
-	file_index = FileIndex.new(get_editor_interface().get_resource_filesystem().get_filesystem())
+	var file_index = FileIndex.new(get_editor_interface().get_resource_filesystem().get_filesystem())
+	
+	cur_mode = preload("res://addons/godot-command-palette/modes/mode_files.gd").new(get_editor_interface(), file_index)
 
 func _exit_tree() -> void:
 	remove_control_from_container(CONTAINER_TOOLBAR, finder)
@@ -73,8 +75,10 @@ func open_finder() -> void:
 	finder_window.popup_centered()
 	finder_search.grab_focus()
 	
+	cur_mode.palette_opened()
+	
 	# Populate file list
-	populate_list()
+	cur_mode.populate_list(finder_list)
 
 func close_finder() -> void:
 	if !open: return
@@ -87,49 +91,22 @@ func _on_finder_closed() -> void:
 	if !open: return
 	open = false
 	
+	cur_mode.palette_closed()
+	
 	# Clear controls
 	finder_list.clear()
 	finder_search.clear()
 
-# Add resources to list
-func populate_list():
-	finder_list.clear()
-	for res in file_index.resources_filtered:
-		finder_list.add_item(res.path)
-		finder_list.set_item_metadata(finder_list.get_item_count() - 1, res.type)
-	
-	# Select first item
-	if finder_list.get_item_count() > 0:
-		finder_list.select(0)
-
 # Filter list when search text changed
-# warning-ignore: unused_argument
-func _on_search_text_changed(new_text: String) -> void:
-	# Filter and display results
-	file_index.filter(finder_search.text)
-	populate_list()
+func _on_search_text_changed(text: String) -> void:
+	cur_mode.search_changed(text, finder_list)
 
 # Open result
-func _on_search_text_entered(new_text: String) -> void:
-	if finder_list.get_item_count() == 0:
-		return
-	
-	# Get item type
-	var path = finder_list.get_item_text(get_selected_item_index())
-	var type = finder_list.get_item_metadata(get_selected_item_index())
-	match type:
-		"PackedScene":
-			get_editor_interface().open_scene_from_path(path)
-		"GDScript":
-			get_editor_interface().edit_resource(load(path))
-		_:
-			get_editor_interface().select_file(path)
-			get_editor_interface().edit_resource(load(path))
-	
-	# Clear search
-	finder_search.clear()
-	# Close window
-	close_finder()
+func _on_search_text_entered(text: String) -> void:
+	# Only cleanup if mode triggers successfully (true)
+	if cur_mode.triggered(finder_list):
+		finder_search.clear()
+		close_finder()
 
 # Get selected item index in item list
 func get_selected_item_index() -> int:
@@ -160,4 +137,4 @@ func move_selection_down() -> void:
 	finder_list.ensure_current_is_visible()
 
 func _on_filesystem_changed():
-	file_index.build_index()
+	cur_mode.filesystem_changed()
