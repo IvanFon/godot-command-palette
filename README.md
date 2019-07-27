@@ -13,7 +13,7 @@ While using the finder, you can use the up and down arrow keys to change the sel
 
 ## Installation
 
-1. Download the [latest release here](https://github.com/IvanFon/godot-command-palette/releases/latest) (click on `Source code (zip)`)
+1. Download the [latest release here](https://github.com/IvanFon/godot-command-palette/releases/latest) (click on `godot-command-palette-0.1.0.zip`)
 2. In the root of your Godot project, create a folder called `addons`.
 3. Unzip `godot-command-palette` into your `addons` folder. Your project should look something like this:
 
