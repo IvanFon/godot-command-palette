@@ -32,6 +32,7 @@ func _enter_tree() -> void:
 	# Connect signals
 	# Palette
 	palette_window.connect("popup_hide", self, "_on_palette_closed")
+	palette_list.connect("item_activated", self, "_on_palette_item_activated")
 	palette_search.connect("text_changed", self, "_on_search_text_changed")
 	palette_search.connect("text_entered", self, "_on_search_text_entered")
 	# Filesystem changes
@@ -97,12 +98,17 @@ func _on_palette_closed() -> void:
 	palette_list.clear()
 	palette_search.clear()
 
+func _on_palette_item_activated(index: int) -> void:
+	trigger()
+
 # Filter list when search text changed
 func _on_search_text_changed(text: String) -> void:
 	cur_mode.search_changed(text, palette_list)
 
-# Open result
 func _on_search_text_entered(text: String) -> void:
+	trigger()
+
+func trigger() -> void:
 	# Only cleanup if mode triggers successfully (true)
 	if cur_mode.triggered(palette_list):
 		palette_search.clear()
